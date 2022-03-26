@@ -1,5 +1,13 @@
 # nimres
 
+nimres is a nim package used to bundle dependencys into a single file to be shipped with the executable that can store data from multiple other files.
+
+## Alternatives
+
+both of these store the assets in the executable.
+
+[nimdeps](https://github.com/genotrance/nimdepss)
+[nimassets](https://github.com/xmonader/nimassets)
 ## Quickstart
 
 install `nimres`
