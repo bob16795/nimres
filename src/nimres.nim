@@ -19,6 +19,7 @@ template resToc*(parent, target: string, files: untyped) =
   export tables
   import streams
   export streams
+  export Resource
 
   var
     file_table {.compileTime, genSym.}: OrderedTable[string, Resource]
@@ -60,7 +61,7 @@ template resToc*(parent, target: string, files: untyped) =
   template getPointer*(res: Resource): pointer =
     resourcesData + res.start.int
 
-  proc openStream*(res: Resource): Stream =
+  proc openStream*(res: Resource): Stream {.inline.} =
     result = newStringStream("")
     result.writedata(res.getPointer(), res.size)
     result.setPosition(0)
@@ -70,24 +71,13 @@ template resToc*(parent, target: string, files: untyped) =
     result = stream.readAll()
     stream.close()
 
-  proc handleFile(name: string, file: NimNode): NimNode {.compileTime.} =
+  template handleRes(name: string, file: string): Resource =
     # returns a Resource object
-    if FINAL_TABLE.hasKey(name):
-      # This message is in the catalog.
-      template retrieve(fileName): untyped =
-        FINAL_TABLE[$fileName]
-      return getAst(retrieve(file))
-    else:
-      # This message is not known to the catalog.
-      # Use the source-provided value.
-      error("The resource '" & name & "' is missing", file)
-      return file
+    FINAL_TABLE.getOrDefault(file)
 
-  macro file*(name: string, message: untyped): untyped =
-    ## TODO
-    handleFile($name, message.copyNimTree())
+  proc res*(name: string, path: string): Resource {.inline.} =
+    handleRes($name, path)
 
-  macro file*(message: untyped): untyped =
-    ## TODO
-    let saniname = extractFilename($message)
-    handleFile(saniname, message.copyNimTree())
+  proc res*(path: string): Resource {.inline.} =
+    var tmpName = extractFilename(path)
+    handleRes(tmpName, path)
