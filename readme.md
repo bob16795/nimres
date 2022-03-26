@@ -6,8 +6,8 @@ nimres is a nim package used to bundle dependencys into a single file to be ship
 
 both of these store the assets in the executable.
 
-[nimdeps](https://github.com/genotrance/nimdepss)
-[nimassets](https://github.com/xmonader/nimassets)
+- [nimdeps](https://github.com/genotrance/nimdepss)
+- [nimassets](https://github.com/xmonader/nimassets)
 ## Quickstart
 
 install `nimres`
