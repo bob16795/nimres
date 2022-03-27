@@ -14,7 +14,7 @@ type
     start*: int
     size*: int
 
-template resToc*(parent, target: string, files: untyped) =
+template resToc*(parent, target: string, files: varargs[string]) =
   import tables
   export tables
   import streams

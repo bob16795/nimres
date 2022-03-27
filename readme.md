@@ -23,11 +23,10 @@ import nimres
 
 const root = currentSourcePath()
 
-resToc root, "content.bin":
-  [
-    "file1.txt",
-    # more files
-  ]
+resToc(root, "content.bin",
+  "file1.txt",
+  # more files
+)
 ```
 
 import `files.nim` in any files you want to refrence a resource:
