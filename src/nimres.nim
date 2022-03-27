@@ -29,20 +29,28 @@ template resToc*(parent, target: string, files: varargs[string]) =
   # generate the resource file
   static:
     try:
+      var contents: string
       var targetdata: string
       for f in files:
-        if file_table.contains(f):
-          error("File already used '" & f & "'")
-        var
-          bytes = staticRead((parent / f).replace("\\", "/"))
-        echo "read '" & f.extractFilename() & "'"
-        file_table[f.extractFilename()] = Resource(start: file_size,
-            size: bytes.len())
-        file_size += bytes.len()
-        targetdata &= bytes
-      writeFile((parent / t).replace("\\", "/"), targetdata)
+        when defined(genContents):
+          contents &= (parent / f).replace("\\", "/") & " "
+          if file_table.contains(f):
+            error("File already used '" & f & "'")
+        else:
+          var
+            bytes = staticRead((parent / f).replace("\\", "/"))
+          echo "read '" & f.extractFilename() & "'"
+          file_table[f.extractFilename()] = Resource(start: file_size,
+              size: bytes.len())
+          file_size += bytes.len()
+          targetdata &= bytes
+      when defined(genContents):
+        echo "contents: " & contents
+        quit(1)
+      else:
+        writeFile((parent / t).replace("\\", "/"), targetdata)
+        echo "wrote '" & t & "'"
     except: discard
-    echo "wrote '" & t & "'"
 
   const
     TOTAL_SIZE = file_size
