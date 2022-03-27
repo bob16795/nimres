@@ -6,19 +6,19 @@ nimres is a nim package used to bundle dependencys into a single file to be ship
 
 both of these store the assets in the executable.
 
-- [nimdeps](https://github.com/genotrance/nimdepss)
+- [nimdeps](https://github.com/genotrance/nimdeps)
 - [nimassets](https://github.com/xmonader/nimassets)
 ## Quickstart
 
 install `nimres`
 
-```
+```bash
 nimble install https://github.com/bob16795/nimres.git
 ```
 
 create a `files.nim` file containing:
 
-```
+```nim
 import nimres
 
 const root = currentSourcePath()
@@ -31,7 +31,7 @@ resToc(root, "content.bin",
 
 import `files.nim` in any files you want to refrence a resource:
 
-```
+```nim
 import files
 
 # get the contents as a string
@@ -46,4 +46,12 @@ var dataPtr = res"file1.txt".getPointer
 
 # get the size of the contents
 var contents = res"file1.txt".size
+```
+
+# advanced
+
+get a list of the contents in files.nim
+
+```bash
+nim c -d:genContents -c files.nim 2>&1 | grep contents: | sed -e "s/contents: //" -e "s\#$$PWD/\#\#g"
 ```
