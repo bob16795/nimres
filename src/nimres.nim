@@ -5,7 +5,6 @@ export sets
 import tables
 export tables
 import strutils
-import hashes
 import os
 export os
 
@@ -28,30 +27,27 @@ template resToc*(parent, target: string, files: varargs[string]) =
 
   # generate the resource file
   static:
-    try:
-      var contents: string
-      var targetdata: string
-      for f in files:
-        when defined(genContents):
-          contents &= (parent / f).replace("\\", "/") & " "
-          if file_table.contains(f):
-            error("File already used '" & f & "'")
-        else:
-          var
-            bytes = staticRead((parent / f).replace("\\", "/"))
-          echo "read '" & f.extractFilename() & "'"
-          file_table[f.extractFilename()] = Resource(start: file_size,
-              size: bytes.len())
-          file_size += bytes.len()
-          targetdata &= bytes
+    var contents: string
+    var targetdata: string
+    for f in files:
       when defined(genContents):
-        echo "contents: " & contents
-        quit(1)
+        contents &= (parent / f).replace("\\", "/") & " "
+        if file_table.contains(f):
+          error("File already used '" & f & "'")
       else:
-        writeFile((parent / t).replace("\\", "/"), targetdata)
-        echo "wrote '" & t & "'"
-    except: discard
-
+        var
+          bytes = staticRead((parent / f).replace("\\", "/"))
+        echo "read '" & f.extractFilename() & "'"
+        file_table[f.extractFilename()] = Resource(start: file_size,
+            size: bytes.len())
+        file_size += bytes.len()
+        targetdata &= bytes
+    when defined(genContents):
+      echo "contents: " & contents
+      quit(1)
+    else:
+      writeFile((parent / t).replace("\\", "/"), targetdata)
+      echo "wrote '" & t & "'"
   const
     TOTAL_SIZE = file_size
     FINAL_TABLE = fileTable
@@ -74,7 +70,7 @@ template resToc*(parent, target: string, files: varargs[string]) =
     result.writedata(res.getPointer(), res.size)
     result.setPosition(0)
 
-  proc contents*(res: Resource): string =
+  proc contents*(res: Resource): string {.inline.} =
     var stream = openStream(res)
     result = stream.readAll()
     stream.close()
