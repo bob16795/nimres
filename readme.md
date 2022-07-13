@@ -40,7 +40,7 @@ import `files.nim` in any files you want to refrence a resource:
 import files
 
 # get the contents as a string
-echo res"file1.txt".contents
+echo $res"file1.txt"
 
 # get the contents as a stream
 var stream = res"file1.txt".openStream
