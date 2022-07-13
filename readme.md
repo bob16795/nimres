@@ -25,9 +25,14 @@ const root = currentSourcePath()
 
 resToc(root, "content.bin",
   "file1.txt",
+  
+  "file.txt|preprocessor"
   # more files
 )
 ```
+
+To use a preprocessor, write a script that takes in 2 paths, an input and an output.
+Then use the relative path after a `|` following the filename.
 
 import `files.nim` in any files you want to refrence a resource:
 

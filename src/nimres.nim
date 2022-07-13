@@ -19,6 +19,7 @@ template resToc*(parent, target: string, files: varargs[string]) =
   import streams
   export streams
   export Resource
+  import strutils
 
   var
     file_table {.compileTime, genSym.}: OrderedTable[string, Resource]
@@ -27,6 +28,9 @@ template resToc*(parent, target: string, files: varargs[string]) =
 
   # generate the resource file
   static:
+    var tmpDir = getTempDir() / "nimres"
+    echo staticExec("mkdir -p " & tmpDir)
+
     var contents: string
     var targetdata: string
     for f in files:
@@ -35,13 +39,27 @@ template resToc*(parent, target: string, files: varargs[string]) =
         if file_table.contains(f):
           error("File already used '" & f & "'")
       else:
+        var dataPath: string = "" 
+        var fileName: string = ""
+        if "|" in f:
+          fileName = f.split("|")[0]
+          var cmd = f.split("|")[1]
+          echo "exec '" & cmd & "'"
+          echo staticExec(parent / cmd & " " & parent / fileName & " " & tmpDir / fileName.extractFilename())
+          dataPath = tmpDir / fileName.extractFilename()
+        else:
+          dataPath = parent / f
+          fileName = f
         var
-          bytes = staticRead((parent / f).replace("\\", "/"))
-        echo "read '" & f.extractFilename() & "'"
-        file_table[f.extractFilename()] = Resource(start: file_size,
+          bytes = staticRead((dataPath).replace("\\", "/"))
+        echo "read '" & fileName & "'"
+        file_table[fileName.extractFilename()] = Resource(start: file_size,
             size: bytes.len())
         file_size += bytes.len()
         targetdata &= bytes
+    echo staticExec("rm -rf " & tmpDir)
+    echo file_table
+
     when defined(genContents):
       echo "contents: " & contents
       quit(1)
@@ -70,7 +88,7 @@ template resToc*(parent, target: string, files: varargs[string]) =
     result.writedata(res.getPointer(), res.size)
     result.setPosition(0)
 
-  proc contents*(res: Resource): string {.inline.} =
+  proc `$`*(res: Resource): string {.inline.} =
     var stream = openStream(res)
     result = stream.readAll()
     stream.close()
