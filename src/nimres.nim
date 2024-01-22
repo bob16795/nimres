@@ -1,17 +1,73 @@
 import macros
 export macros
 import sets
-export sets
 import tables
-export tables
 import strutils
+import memfiles
+import streams
 import os
+
 export os
+export sets
+export tables
+export macros
+export streams
 
 type
   Resource* = object
     start*: int
     size*: int
+  ResourceStreamObj* = object of StreamObj
+    data: pointer
+    size: int
+    pos: int
+  ResourceStream* = ref ResourceStreamObj
+
+template `+`*(p: pointer, off: int): pointer =
+  cast[pointer](cast[ByteAddress](p) +% off)
+
+proc rsAtEnd(s: Stream): bool =
+  var s = ResourceStream(s)
+  return s.pos >= s.size
+
+proc rsSetPosition(s: Stream, pos: int) =
+  var s = ResourceStream(s)
+  s.pos = pos
+
+proc rsGetPosition(s: Stream): int =
+  var s = ResourceStream(s)
+  return s.pos
+
+proc rsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
+  var s = ResourceStream(s)
+  result = min(slice.b + 1 - slice.a, s.size - s.pos)
+  if result > 0:
+    copyMem(unsafeAddr buffer[slice.a], s.data + s.pos, result)
+    inc(s.pos, result)
+  else:
+    result = 0
+
+proc rsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+  var s = ResourceStream(s)
+  result = min(bufLen, s.size - s.pos)
+  if result > 0:
+    copyMem(buffer, s.data + s.pos, result)
+    inc(s.pos, result)
+  else:
+    result = 0
+
+proc newResourceStream*(data: pointer, size: int): owned ResourceStream =
+  new(result)
+
+  result.data = data
+  result.size = size
+  result.pos = 0
+
+  result.atEndImpl = rsAtEnd
+  result.setPositionImpl = rsSetPosition
+  result.getPositionImpl = rsGetPosition
+  result.readDataImpl = rsReadData
+  result.readDataStrImpl = rsReadDataStr
 
 template resToc*(parent, target: string, files: varargs[string]) =
   import tables
@@ -29,7 +85,7 @@ template resToc*(parent, target: string, files: varargs[string]) =
   # generate the resource file
   static:
     var tmpDir = getTempDir() / "nimres"
-    echo staticExec("mkdir -p " & tmpDir)
+    echo staticExec("mkdir -p " & tmpDir.replace("\\", "/"))
 
     var contents: string
     var targetdata: string
@@ -45,20 +101,20 @@ template resToc*(parent, target: string, files: varargs[string]) =
           fileName = f.split("|")[0]
           var cmd = f.split("|")[1]
           echo "exec '" & cmd & "'"
-          echo staticExec(parent / cmd & " " & parent / fileName & " " & tmpDir / fileName.extractFilename())
-          dataPath = tmpDir / fileName.extractFilename()
+          echo staticExec((parent / cmd).replace("\\", "/") & " " & (parent / fileName).replace("\\", "/") & " " & (tmpDir / fileName.extractFilename()).replace("\\", "/"))
+          dataPath = tmpDir / fileName.extractFilename().replace("\\", "/")
         else:
           dataPath = parent / f
           fileName = f
         var
           bytes = staticRead((dataPath).replace("\\", "/"))
         echo "read '" & fileName & "'"
-        file_table[fileName.extractFilename()] = Resource(start: file_size,
+        file_table[fileName.extractFilename().replace("\\", "/")] = Resource(start: file_size,
             size: bytes.len())
         file_size += bytes.len()
         targetdata &= bytes
-    echo staticExec("rm -rf " & tmpDir)
-    echo file_table
+    for f in file_table.keys():
+      echo f & " " & $file_table[f].size
 
     when defined(genContents):
       echo "contents: " & contents
@@ -71,25 +127,16 @@ template resToc*(parent, target: string, files: varargs[string]) =
     FINAL_TABLE = fileTable
     RESOURCES_PATH = target
 
-  var
-    resourcesData = alloc(TOTAL_SIZE)
-    tempFile = open(getAppDir() / RESOURCES_PATH)
-  discard tempFile.readBuffer(resourcesData, TOTAL_SIZE)
-  tempFile.close()
-
-  template `+`*(p: pointer, off: int): pointer =
-    cast[pointer](cast[ByteAddress](p) +% off)
+  let resourcesData = memfiles.open(getAppDir() / RESOURCES_PATH, mode = fmRead, mappedSize = TOTAL_SIZE)
 
   template getPointer*(res: Resource): pointer =
-    resourcesData + res.start.int
+    resourcesData.mem + res.start.int
 
   proc openStream*(res: Resource): Stream {.inline.} =
-    result = newStringStream("")
-    result.writedata(res.getPointer(), res.size)
-    result.setPosition(0)
+    result = newResourceStream(res.getPointer(), res.size)
 
   proc `$`*(res: Resource): string {.inline.} =
-    var stream = openStream(res)
+    let stream = openStream(res)
     result = stream.readAll()
     stream.close()
 
@@ -101,5 +148,5 @@ template resToc*(parent, target: string, files: varargs[string]) =
     handleRes($name, path)
 
   proc res*(path: string): Resource {.inline.} =
-    var tmpName = extractFilename(path)
+    let tmpName = extractFilename(path)
     handleRes(tmpName, path)
