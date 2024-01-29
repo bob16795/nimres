@@ -24,7 +24,7 @@ type
   ResourceStream* = ref ResourceStreamObj
 
 template `+`*(p: pointer, off: int): pointer =
-  cast[pointer](cast[ByteAddress](p) +% off)
+  cast[pointer](cast[int](p) +% off)
 
 proc rsAtEnd(s: Stream): bool =
   var s = ResourceStream(s)
